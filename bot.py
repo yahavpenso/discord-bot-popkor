@@ -17,6 +17,8 @@ try:
 except ImportError:
     flask_available = False
 import logging
+from discord import FFmpegPCMAudio
+import yt_dlp
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -84,72 +86,86 @@ if flask_available:
 
 async def fetch_fortnite_news():
     url = "https://fortnite-api.com/v2/news"  # Public Fortnite news API
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
-            if resp.status == 200:
-                data = await resp.json()
-                br_news = data.get('data', {}).get('br', {}).get('motds', [])
-                embeds = []
-                for item in br_news:
-                    title = item.get('title', '')
-                    body = item.get('body', '')
-                    image = item.get('image', '')
-                    embed = discord.Embed(title=title, description=body, color=0x00bfff)
-                    if image:
-                        embed.set_image(url=image)
-                    embeds.append(embed)
-                return embeds if embeds else None
-            else:
-                return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    br_news = data.get('data', {}).get('br', {}).get('motds', [])
+                    embeds = []
+                    for item in br_news:
+                        title = item.get('title', '')
+                        body = item.get('body', '')
+                        image = item.get('image', '')
+                        embed = discord.Embed(title=title, description=body, color=0x00bfff)
+                        if image:
+                            embed.set_image(url=image)
+                        embeds.append(embed)
+                    return embeds if embeds else None
+                else:
+                    return None
+    except Exception as e:
+        print(f"[Network Error] Could not fetch Fortnite news: {e}")
+        await log_bot_action(f"Network error fetching Fortnite news: {e}")
+        return None
 
 async def fetch_epic_free_games():
     url = "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=en-US&country=US&allowCountries=US"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
-            if resp.status == 200:
-                data = await resp.json()
-                games = data.get('data', {}).get('Catalog', {}).get('searchStore', {}).get('elements', [])
-                free_games = []
-                for game in games:
-                    title = game.get('title', 'Unknown')
-                    description = game.get('description', 'No description.')
-                    image = None
-                    for img in game.get('keyImages', []):
-                        if img.get('type', '').lower() in ['dieselstorefrontwide', 'offerimagewide', 'dieselstorefront']:  # fallback to any image
-                            image = img.get('url')
-                            break
-                        elif not image:
-                            image = img.get('url')
-                    offer = game.get('productSlug')
-                    url = f"https://store.epicgames.com/en-US/p/{offer}" if offer else "https://store.epicgames.com/en-US/free-games"
-                    is_free = False
-                    # Check both current and upcoming promotions
-                    for promo_block in ['promotions', 'upcomingPromotions']:
-                        promo_data = game.get(promo_block)
-                        if not promo_data:
-                            continue
-                        for promo in promo_data.get('promotionalOffers', []):
-                            for offer_detail in promo.get('promotionalOffers', []):
-                                if offer_detail.get('discountSetting', {}).get('discountPercentage') == 0:
-                                    is_free = True
-                    if is_free:
-                        free_games.append({
-                            'title': title,
-                            'description': description,
-                            'image': image,
-                            'url': url
-                        })
-                return free_games
-            else:
-                return []
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    games = data.get('data', {}).get('Catalog', {}).get('searchStore', {}).get('elements', [])
+                    free_games = []
+                    for game in games:
+                        title = game.get('title', 'Unknown')
+                        description = game.get('description', 'No description.')
+                        image = None
+                        for img in game.get('keyImages', []):
+                            if img.get('type', '').lower() in ['dieselstorefrontwide', 'offerimagewide', 'dieselstorefront']:
+                                image = img.get('url')
+                                break
+                            elif not image:
+                                image = img.get('url')
+                        offer = game.get('productSlug')
+                        url = f"https://store.epicgames.com/en-US/p/{offer}" if offer else "https://store.epicgames.com/en-US/free-games"
+                        is_free = False
+                        for promo_block in ['promotions', 'upcomingPromotions']:
+                            promo_data = game.get(promo_block)
+                            if not promo_data:
+                                continue
+                            for promo in promo_data.get('promotionalOffers', []):
+                                for offer_detail in promo.get('promotionalOffers', []):
+                                    if offer_detail.get('discountSetting', {}).get('discountPercentage') == 0:
+                                        is_free = True
+                        if is_free:
+                            free_games.append({
+                                'title': title,
+                                'description': description,
+                                'image': image,
+                                'url': url
+                            })
+                    return free_games
+                else:
+                    return []
+    except Exception as e:
+        print(f"[Network Error] Could not fetch Epic Games free games: {e}")
+        await log_bot_action(f"Network error fetching Epic Games free games: {e}")
+        return []
 
 async def log_bot_action(message: str):
     channel = bot.get_channel(LOG_CHANNEL_ID)
     if channel:
-        embed = discord.Embed(title="🤖 Bot Action", description=message, color=0x5865F2)
-        await channel.send(embed=embed)
-        terminal_embed = discord.Embed(title="🖥️ Terminal", description=message, color=0x888888)
-        await channel.send(embed=terminal_embed)
+        try:
+            embed = discord.Embed(title="🤖 Bot Action", description=message, color=0x5865F2)
+            await channel.send(embed=embed)
+            terminal_embed = discord.Embed(title="🖥️ Terminal", description=message, color=0x888888)
+            await channel.send(embed=terminal_embed)
+        except Exception as e:
+            print(f"[Log Error] Could not send log to Discord: {e}")
+    else:
+        print("[Log Error] Log channel not found.")
 
 async def send_epic_free_games():
     channel = bot.get_channel(EPIC_FREE_GAMES_CHANNEL_ID)
@@ -214,6 +230,8 @@ async def help_command(interaction: discord.Interaction):
     embed.add_field(name="/testlog", value="Send a test log message to the log channel.", inline=False)
     embed.add_field(name="/news", value="Fetch and post the latest Fortnite news.", inline=False)
     embed.add_field(name="/freegames", value="Fetch and post the current Epic Games free games.", inline=False)
+    embed.add_field(name="/about", value="Show info about the bot and invite link.", inline=False)
+    embed.add_field(name="/uptime", value="Show how long the bot has been running.", inline=False)
     embed.set_footer(text="Popkor Bot | Epic Games & Fortnite News")
     await interaction.response.send_message(embed=embed, ephemeral=True)
     await log_bot_action("Help command used.")
@@ -354,4 +372,41 @@ async def testlog(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, ephemeral=True)
     await log_bot_action("Test log command was used.")
 
-bot.run("MTM3NTgzMjM0ODU1MzM3OTg1MA.GXMsCt.hdWKKRfIXMJlNJYe0ncVprOK8rL_Jf5XSpmiHM")
+# Add a /uptime command to show how long the bot has been running
+@bot.tree.command(name="uptime", description="Show how long the bot has been running.")
+async def uptime_command(interaction: discord.Interaction):
+    now = datetime.datetime.utcnow()
+    delta = now - bot_start_time
+    days, seconds = delta.days, delta.seconds
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    seconds = seconds % 60
+    uptime_str = f"{days}d {hours}h {minutes}m {seconds}s"
+    embed = discord.Embed(title="⏱️ Bot Uptime", description=f"Uptime: {uptime_str}", color=0x5865F2)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await log_bot_action(f"Responded to /uptime: {uptime_str}")
+
+# Add error handler for commands
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error):
+    embed = discord.Embed(title="❌ Command Error", description=str(error), color=0xED4245)
+    asyncio.create_task(interaction.response.send_message(embed=embed, ephemeral=True))
+    asyncio.create_task(log_bot_action(f"Command error: {error}"))
+
+# Add a /about command for bot info and invite link
+@bot.tree.command(name="about", description="Show info about the bot and invite link.")
+async def about_command(interaction: discord.Interaction):
+    embed = discord.Embed(title="🤖 About Popkor Bot", color=0x5865F2)
+    embed.add_field(name="Features", value="Fortnite news, Epic Games free games, logging, webhooks, slash commands, and more!", inline=False)
+    embed.add_field(name="Invite Link", value="[Invite Popkor Bot](https://discord.com/api/oauth2/authorize?client_id=1375832348553379850&permissions=8&scope=bot%20applications.commands)", inline=False)
+    embed.set_footer(text="Created with discord.py | Popkor Bot")
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await log_bot_action("About command used.")
+
+@bot.tree.command(name="coinflip", description="Flip a coin and get heads or tails.")
+async def coinflip_command(interaction: discord.Interaction):
+    result = random.choice(["Heads", "Tails"])
+    emoji = "🪙" if result == "Heads" else "🪙"
+    embed = discord.Embed(title="Coin Flip", description=f"{emoji} {result}", color=0xFFD700)
+    await interaction.response.send_message(embed=embed)
+    await log_bot_action(f"Coin flip: {result}")

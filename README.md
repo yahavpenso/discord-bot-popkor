@@ -1,4 +1,4 @@
-# Popkor Bot
+# Popkor Bot - games NEWS📣
 
 A powerful Discord bot for Fortnite, Epic Games, and Steam news, free games, and more!
 

@@ -98,6 +98,7 @@ A powerful Discord bot for Fortnite, Epic Games, and Steam news, free games, and
 - [Fortnite-API Docs](https://dash.fortnite-api.com/docs)
 - [Epic Games Free Games Info](https://store.epicgames.com/en-US/free-games)
 - [SteamDB Free Games](https://steamdb.info/upcoming/free/)
+- [vercel](https://discord-bot-popkor-otvd.vercel.app)
 
 ---
 

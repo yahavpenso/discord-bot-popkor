@@ -32,10 +32,10 @@ from logger import log_bot_action
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-NEWS_CHANNEL_ID = 1375833494026064066  # Fortnite news channel ID
-EPIC_FREE_GAMES_CHANNEL_ID = 1375833494026064067  # Channel for Epic Games free games
-STEAM_FREE_GAMES_CHANNEL_ID = 1375833494026064066  # Channel for Steam free games
-LOG_CHANNEL_ID = 1375833494026064065  # Channel for bot logs
+NEWS_CHANNEL_ID =  Channel-id  # Fortnite news channel ID
+EPIC_FREE_GAMES_CHANNEL_ID = Channel-id  # Channel for Epic Games free games
+STEAM_FREE_GAMES_CHANNEL_ID = Channel-id  # Channel for Steam free games
+LOG_CHANNEL_ID = Channel-id  # Channel for bot logs
 
 class DiscordLogHandler(logging.Handler):
     def __init__(self, bot, channel_id):
